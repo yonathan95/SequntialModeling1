@@ -108,6 +108,6 @@ if __name__ == '__main__':
         tqdm.write(f"Epoch {epoch + 1}/{epochs} | Test loss: {score}")
         if score < best_score:
             best_score = score
-            torch.save(model.state_dict(), "best_model.pt")
+            torch.save(model.state_dict(), "exchange_rnn_best_model.pt")
 
-    plot_losses(train_losses, test_losses, "losses.pdf")
+    plot_losses(train_losses, test_losses, "exchange_rnn_losses.pdf")

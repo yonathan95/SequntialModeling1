@@ -2,7 +2,7 @@ from torch import nn
 
 class RNN(nn.Module):
 
-    def __init__(self, input_size=1, hidden_size=64, output_size=1, num_layers=1, batch_first=True):
+    def __init__(self, input_size=1, hidden_size=64, output_size=1, num_layers=3, batch_first=True):
         super().__init__()
         self.lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, batch_first=batch_first)
         self.linear = nn.Linear(hidden_size, output_size)
