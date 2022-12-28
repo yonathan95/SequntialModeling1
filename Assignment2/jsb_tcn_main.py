@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim as optim
 import sys
-from rnn import RNN
+from tcn import TCN
 from jsb_datasets import load_jsb
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,10 +20,11 @@ if torch.cuda.is_available():
 input_size = 88
 X_train, X_valid, X_test = load_jsb(as_tensor=True)
 
+n_channels = [150] * 4
 kernel_size = 5
-hidden_size=64
+dropout = 0.25
 
-model = RNN(input_size=input_size, hidden_size=hidden_size, output_size=input_size)
+model = TCN(input_size, input_size, n_channels, kernel_size, dropout)
 
 if cuda:
     model.cuda()
@@ -44,8 +45,7 @@ def evaluate(X_data, name='Eval'):
             x, y = Variable(data_line[:-1]), Variable(data_line[1:])
             if cuda:
                 x, y = x.cuda(), y.cuda()
-            output, _ = model(x.unsqueeze(0))
-            output = output.squeeze(0)
+            output = model(x.unsqueeze(0)).squeeze(0)
             loss = criterion(y, output)
             total_loss += loss.item()
             count += output.size(0)
@@ -67,8 +67,7 @@ def train(ep):
             x, y = x.cuda(), y.cuda()
 
         optimizer.zero_grad()
-        output, _ = model(x.unsqueeze(0))
-        output = output.squeeze(0)
+        output = model(x.unsqueeze(0)).squeeze(0)
         loss = criterion(y, output)
         total_loss += loss.item()
         count += output.size(0)
@@ -80,7 +79,7 @@ def train(ep):
         if idx > 0 and idx % 100 == 0:
             cur_loss = total_loss / count
             print("Epoch {:2d} | lr {:.5f} | loss {:.5f}".format(ep, lr, cur_loss))
-
+            
     return total_loss / count
 
 def plot_losses(train_lose, test_lose, path=None, title="Losses"):
@@ -118,9 +117,9 @@ def plot_losses(train_lose, test_lose, path=None, title="Losses"):
 if __name__ == "__main__":
     best_tr_loss = 1e8
     tr_loss_list = []
-    model_name = "JSB_Chorales_rnn.pt"
     train_losses = np.zeros(100)
     test_losses = np.zeros(100)
+    model_name = "jsb_tcn_best_model.pt"
     for ep in range(0, 100):
         tr_loss = train(ep)
         tloss = evaluate(X_test, name='Test')
@@ -137,8 +136,8 @@ if __name__ == "__main__":
                 param_group['lr'] = lr
 
         tr_loss_list.append(tr_loss)
-        
-    plot_losses(train_losses, test_losses, "jsb_rnn_losses.pdf", "RNN on JSB_Chorales")
+
+    plot_losses(train_losses, test_losses, "jsb_tcn_losses.pdf", "TCN on JSB_Chorales")
     print('-' * 89)
     model = torch.load(open(model_name, "rb"))
     tloss = evaluate(X_test)

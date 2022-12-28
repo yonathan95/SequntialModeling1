@@ -4,33 +4,8 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader
-
-class Exchange(Dataset):
-
-    def __init__(self):
-        
-        df = pd.read_csv('/home/yonathan95/SequntialModeling1/Assignment2/exchange_rate.csv')
-        self.steps_num = df.shape[0]
-        self.data = torch.zeros(79, steps_num + 1, 7)
-        self.data[:, 0, 0] = x_0  # Sample_num, Time, [x, v]. x.shape == 1 , v.shape == 1
-        self.data[:, 0, 1] = v_0
-        x_1 = self.data[:, 1, 0] = x_0 + v_0 * delta_t - 0.5 * x_0 * delta_t ** 2
-        self.data[:, 1, 1] = (x_1 - x_0) / delta_t  # v_1 = (x_1 - x_0) / delta_t
-        for i in range(2, steps_num + 1):
-            x_t = self.data[:, i - 1, 0]  # xt
-            x_t_m1 = self.data[:, i - 2, 0]  # xt-1
-            self.data[:, i, 0] = 2 * x_t - x_t_m1 - x_t * delta_t ** 2  # xt+1
-            self.data[:, i, 1] = (self.data[:, i, 0] - x_t) / delta_t  # vt+1
-
-    def __getitem__(self, index):
-        """
-        :param index: index of the sample
-        :return: x, y of shape (seq_len, 2)
-        """
-        return self.data[index, :-1, :], self.data[index, 1:, :]
-
-    def __len__(self):
-        return len(self.data)
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 class Dataset_Custom(Dataset):
     def __init__(self, flag='train', size=None,
@@ -132,7 +107,7 @@ class ExchangeDatasetRnn(Dataset_Custom):
 
         return seq_x.astype('float32'), seq_y.astype('float32')
     
-def get_exhange_dataloader(flag='train'):
+def get_exchange_dataloader(flag='train'):
     dataset = ExchangeDatasetRnn(flag=flag)
     return DataLoader(
             dataset,

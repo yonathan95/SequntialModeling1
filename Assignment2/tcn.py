@@ -53,14 +53,17 @@ class TemporalConvNet(nn.Module):
         return self.network(x)
 
 class TCN(nn.Module):
-    def __init__(self, input_size, output_size, num_channels, kernel_size, dropout):
+    def __init__(self, input_size, output_size, num_channels, kernel_size, dropout, is_binary=True):
         super(TCN, self).__init__()
         self.tcn = TemporalConvNet(input_size, num_channels, kernel_size, dropout=dropout)
         self.linear = nn.Linear(num_channels[-1], output_size)
         self.sig = nn.Sigmoid()
+        self.is_binary = is_binary
 
     def forward(self, x):
         # x needs to have dimension (N, C, L) in order to be passed into CNN
         output = self.tcn(x.transpose(1, 2)).transpose(1, 2)
         output = self.linear(output)
-        return self.sig(output)
+        if self.is_binary:
+            return self.sig(output)
+        return output

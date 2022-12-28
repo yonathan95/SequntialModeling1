@@ -2,7 +2,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from rnn import RNN
+from transformer import TransformerModel
 from exchange_dataset import get_exchange_dataloader
 import numpy as np
 from tqdm import tqdm
@@ -40,7 +40,7 @@ def plot_losses(train_lose, test_lose, path=None, title="Losses"):
     plt.tick_params(labelsize=19)
     # font size labels
     plt.xlabel("Epoch", fontsize=25)
-    plt.ylabel("Loss", fontsize=25)
+    plt.ylabel("MSE Loss", fontsize=25)
     # give a title to the plot
     plt.title(title)
     # save plot by a name
@@ -62,7 +62,7 @@ def evaluate(model, data_set, loss_fn, batch_size):
     for i, (x, y) in enumerate(tqdm(data_set, leave=False)):
         x, y = x.to(device), y.to(device)
         with torch.no_grad():
-            y_pred, _ = model(x)  # y_pred is of shape (batch_size, seq_len, 2)
+            y_pred = model(x)  # y_pred is of shape (batch_size, seq_len, 2)
             loss = loss_fn(y_pred, y)
             total_loss += loss.item()
             count += len(y)
@@ -84,7 +84,7 @@ def train(model, train_set, loss_fn, opt, batch_size):
     for i, (x, y) in enumerate(tqdm(train_set)):
         x, y = x.to(device), y.to(device)
         opt.zero_grad()
-        y_hat, _ = model(x)
+        y_hat = model(x)
         loss = loss_fn(y, y_hat)
         loss.backward()
         opt.step()
@@ -93,13 +93,10 @@ def train(model, train_set, loss_fn, opt, batch_size):
     return total_loss / count
 
 if __name__ == '__main__':
-    v_mag = 1
-    delta_t = 0.3
-
     epochs = 100
     batch_size = 32
-    model = RNN().to(device)
-    opt = optim.Adam(model.parameters(), lr=1e-2, betas=(0.9, 0.999))
+    model = TransformerModel(ninp=8, nhead=8, nhid=3, nlayers=1).to(device)
+    opt = optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999))
     loss_fn = MSELoss().to(device)
     train_losses = np.zeros(epochs)
     test_losses = np.zeros(epochs)
@@ -110,9 +107,10 @@ if __name__ == '__main__':
         # test model
         score = evaluate(model, get_exchange_dataloader(flag='test'), loss_fn, batch_size)
         test_losses[epoch] = score
+        tqdm.write(f"Epoch {epoch + 1}/{epochs} | Train loss: {train_losses[epoch]}")
         tqdm.write(f"Epoch {epoch + 1}/{epochs} | Test loss: {score}")
         if score < best_score:
             best_score = score
-            torch.save(model.state_dict(), "exchange_rnn_best_model.pt")
+            torch.save(model.state_dict(), "exchange_transformer_best_model.pt")
 
-    plot_losses(train_losses, test_losses, "exchange_rnn_losses.pdf", "RNN on Exchange rate")
+    plot_losses(train_losses, test_losses, "exchange_transformer_losses.pdf", "Transformer on Exchange rate")

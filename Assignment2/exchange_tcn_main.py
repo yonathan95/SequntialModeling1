@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from tcn import TCN
-from exchange_dataset import get_exhange_dataloader
+from exchange_dataset import get_exchange_dataloader
 import numpy as np
 from tqdm import tqdm
 from torch.nn import MSELoss
@@ -30,6 +30,7 @@ def plot_losses(train_lose, test_lose, path=None, title="Losses"):
     plt.figure(figsize=(12, 6.5), dpi=250)
     plt.plot(train_lose, label='train', linewidth=2.5)
     plt.plot(test_lose, label='test', linewidth=2.5)
+    plt.yscale('log')
     plt.legend()
     # legend font size
     plt.legend(fontsize=20)
@@ -39,7 +40,7 @@ def plot_losses(train_lose, test_lose, path=None, title="Losses"):
     plt.tick_params(labelsize=19)
     # font size labels
     plt.xlabel("Epoch", fontsize=25)
-    plt.ylabel("MSE Loss", fontsize=25)
+    plt.ylabel("Loss", fontsize=25)
     # give a title to the plot
     plt.title(title)
     # save plot by a name
@@ -57,13 +58,15 @@ def evaluate(model, data_set, loss_fn, batch_size):
     """
     model.eval()
     total_loss = 0
+    count = 0
     for i, (x, y) in enumerate(tqdm(data_set, leave=False)):
         x, y = x.to(device), y.to(device)
         with torch.no_grad():
             y_pred = model(x)  # y_pred is of shape (batch_size, seq_len, 2)
             loss = loss_fn(y_pred, y)
             total_loss += loss.item()
-    return total_loss / (len(data_set) / batch_size)
+            count += len(y)
+    return total_loss / count
 
 
 def train(model, train_set, loss_fn, opt, batch_size):
@@ -77,6 +80,7 @@ def train(model, train_set, loss_fn, opt, batch_size):
     """
     model.train()
     total_loss = 0
+    count = 0
     for i, (x, y) in enumerate(tqdm(train_set)):
         x, y = x.to(device), y.to(device)
         opt.zero_grad()
@@ -85,18 +89,16 @@ def train(model, train_set, loss_fn, opt, batch_size):
         loss.backward()
         opt.step()
         total_loss += loss.detach().item()
-    return total_loss / (len(train_set) / batch_size)
+        count += len(y)
+    return total_loss / count
 
 if __name__ == '__main__':
-    v_mag = 1
-    delta_t = 0.3
-
     epochs = 100
-    batch_size = 128
+    batch_size = 64
     n_channels = [150] * 4
     kernel_size = 5
     dropout = 0.25
-    model = TCN(input_size=1, output_size=1, num_channels=n_channels, kernel_size=kernel_size, dropout=dropout).to(device)
+    model = TCN(input_size=1, output_size=1, num_channels=n_channels, kernel_size=kernel_size, dropout=dropout, is_binary=False).to(device)
     opt = optim.Adam(model.parameters(), lr=1e-2, betas=(0.9, 0.999))
     loss_fn = MSELoss().to(device)
     train_losses = np.zeros(epochs)
@@ -104,13 +106,13 @@ if __name__ == '__main__':
     best_score = np.inf
     for epoch in tqdm(range(epochs), leave=False):
         # train model
-        train_losses[epoch] = train(model, get_exhange_dataloader(), loss_fn, opt, batch_size)
+        train_losses[epoch] = train(model, get_exchange_dataloader(), loss_fn, opt, batch_size)
         # test model
-        score = evaluate(model, get_exhange_dataloader(flag='test'), loss_fn, batch_size)
+        score = evaluate(model, get_exchange_dataloader(flag='test'), loss_fn, batch_size)
         test_losses[epoch] = score
         tqdm.write(f"Epoch {epoch + 1}/{epochs} | Test loss: {score}")
         if score < best_score:
             best_score = score
-            torch.save(model.state_dict(), "best_model_tcn_exchange.pt")
+            torch.save(model.state_dict(), "exchange_tcn_best_model.pt")
 
-    plot_losses(train_losses, test_losses, "losses.pdf")
+    plot_losses(train_losses, test_losses, "exchange_tcn_losses.pdf", "TCN on Exchange rate")
